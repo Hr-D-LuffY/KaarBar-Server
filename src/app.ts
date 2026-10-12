@@ -6,6 +6,7 @@ import { config } from "./config";
 import { globalErrorHandler } from "./middleware/globalErrorHandler";
 import { notFound } from "./middleware/notFound";
 // import { generalRateLimiter } from "./middleware/rateLimiter";
+import { AuthRoutes } from "./modules/auth/auth.route";
 import { sendSuccess } from "./utils/sendResponse";
 
 // Render puts exactly one proxy in front of the app; locally there is none
@@ -28,6 +29,8 @@ app.get("/health", (_req: Request, res: Response) => {
 app.get("/", (_req: Request, res: Response) => {
   sendSuccess(res, { message: "Welcome to Kaarbaar - paper and printing shop management" });
 });
+
+app.use("/api/v1/auth", AuthRoutes);
 
 app.use(notFound);
 app.use(globalErrorHandler);

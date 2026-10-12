@@ -1,0 +1,24 @@
+{
+  "name": "kaarbaar-server",
+  "version": "1.0.0",
+  "description": "Kaarbaar — REST API for a paper and printing-material shop (catalog, stock, sales, dues, salary)",
+  "private": true,
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsup",
+    "start": "node dist/server.js",
+    "format:check": "biome format ./src",
+    "format:fix": "biome format --write ./src",
+    "lint:check": "biome lint ./src",
+    "lint:fix": "biome lint --write ./src"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.7",
+    "@types/node": "^26.1.2",
+    "tsup": "^8.5.1",
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2"
+  }
+}

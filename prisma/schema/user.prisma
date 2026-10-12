@@ -3,7 +3,7 @@ model User {
   shopId       String?
   name         String
   email        String   @unique
-  phone        String   @unique
+  phone        String?  @unique
   passwordHash String
   role         Role
   photoUrl     String?

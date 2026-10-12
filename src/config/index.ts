@@ -22,6 +22,12 @@ const envSchema = z
     SEED_SUPER_ADMIN_PASSWORD: z.string().min(8).optional(),
     SEED_OWNER_EMAIL: z.email().optional(),
     SEED_OWNER_PASSWORD: z.string().min(8).optional(),
+    SEED_SUPER_ADMIN_NAME: z.string().min(1).optional(),
+    SEED_OWNER_NAME: z.string().min(1).optional(),
+    SEED_OWNER_PHONE: z.string().min(1).optional(),
+    SEED_SHOP_NAME: z.string().min(1).optional(),
+    SEED_SHOP_PHONE: z.string().min(1).optional(),
+    SEED_SHOP_ADDRESS: z.string().min(1).optional(),
   })
   .refine(
     (env) => env.NODE_ENV !== "production" || !env.JWT_SECRET.includes(PLACEHOLDER_SECRET_MARKER),
@@ -59,7 +65,13 @@ export const config = {
   seed: {
     superAdminEmail: env.SEED_SUPER_ADMIN_EMAIL,
     superAdminPassword: env.SEED_SUPER_ADMIN_PASSWORD,
+    superAdminName: env.SEED_SUPER_ADMIN_NAME,
     ownerEmail: env.SEED_OWNER_EMAIL,
     ownerPassword: env.SEED_OWNER_PASSWORD,
+    ownerName: env.SEED_OWNER_NAME,
+    ownerPhone: env.SEED_OWNER_PHONE,
+    shopName: env.SEED_SHOP_NAME,
+    shopPhone: env.SEED_SHOP_PHONE,
+    shopAddress: env.SEED_SHOP_ADDRESS,
   },
 };

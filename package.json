@@ -1,7 +1,7 @@
 {
   "name": "kaarbaar-server",
   "version": "1.0.0",
-  "description": "Kaarbaar — REST API for a paper and printing-material shop (catalog, stock, sales, dues, salary)",
+  "description": "Kaarbaar â€” REST API for a paper and printing-material shop (catalog, stock, sales, dues, salary)",
   "private": true,
   "type": "module",
   "main": "dist/server.js",
@@ -18,14 +18,19 @@
     "@biomejs/biome": "2.5.7",
     "@types/express": "^5.0.6",
     "@types/node": "^26.1.2",
+    "@types/pg": "^8.23.1",
+    "prisma": "^7.9.1",
     "tsup": "^8.5.1",
     "tsx": "^4.23.1",
     "typescript": "^7.0.2"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "^7.9.1",
+    "@prisma/client": "^7.9.1",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "http-status": "^2.1.0",
+    "pg": "^8.22.0",
     "zod": "^4.4.3"
   }
 }

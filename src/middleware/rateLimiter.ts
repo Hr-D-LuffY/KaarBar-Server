@@ -6,6 +6,7 @@ import { AppError } from "../utils/AppError";
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_MAX_ATTEMPTS = 10;
 const GENERAL_MAX_REQUESTS = 350;
+const EMAIL_MAX_REQUESTS = 5;
 
 const createLimiter = (maxRequests: number, message: string, skipSuccessfulRequests = false) =>
   rateLimit({
@@ -29,4 +30,9 @@ export const loginRateLimiter: RequestHandler = createLimiter(
   LOGIN_MAX_ATTEMPTS,
   "Too many login attempts, please try again in 15 minutes",
   true,
+);
+
+export const emailRateLimiter: RequestHandler = createLimiter(
+  EMAIL_MAX_REQUESTS,
+  "Too many email requests, please try again in 15 minutes",
 );

@@ -1,0 +1,20 @@
+model Customer {
+  id        String    @id @default(uuid())
+  shopId    String
+  name      String
+  phone     String
+  email     String?
+  address   String
+  photoUrl  String?
+  due       Decimal   @default(0) @db.Decimal(12, 2)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  shop   Shop    @relation(fields: [shopId], references: [id])
+  orders Order[]
+
+  @@unique([shopId, phone])
+  @@index([shopId, name])
+  @@map("customers")
+}

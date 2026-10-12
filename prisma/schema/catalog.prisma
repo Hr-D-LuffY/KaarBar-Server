@@ -1,0 +1,87 @@
+model Category {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  productTypes ProductType[]
+  products     Product[]
+
+  @@map("categories")
+}
+
+model Unit {
+  id            String   @id @default(uuid())
+  shopId        String
+  name          String
+  symbol        String
+  decimalPlaces Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  shop     Shop      @relation(fields: [shopId], references: [id])
+  products Product[]
+
+  @@unique([shopId, name])
+  @@map("units")
+}
+
+model Company {
+  id        String   @id @default(uuid())
+  shopId    String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shop     Shop      @relation(fields: [shopId], references: [id])
+  products Product[]
+
+  @@unique([shopId, name])
+  @@map("companies")
+}
+
+model ProductType {
+  id         String   @id @default(uuid())
+  shopId     String
+  categoryId String
+  name       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  shop     Shop      @relation(fields: [shopId], references: [id])
+  category Category  @relation(fields: [categoryId], references: [id])
+  products Product[]
+
+  @@unique([shopId, categoryId, name])
+  @@map("product_types")
+}
+
+model Product {
+  id            String    @id @default(uuid())
+  shopId        String
+  categoryId    String
+  companyId     String
+  typeId        String?
+  unitId        String
+  name          String
+  packName      String?
+  packSize      Int?
+  lowStockLevel Int       @default(0)
+  stock         Int       @default(0)
+  avgCost       Decimal   @default(0) @db.Decimal(12, 4)
+  deletedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  shop     Shop         @relation(fields: [shopId], references: [id])
+  category Category     @relation(fields: [categoryId], references: [id])
+  company  Company      @relation(fields: [companyId], references: [id])
+  type     ProductType? @relation(fields: [typeId], references: [id])
+  unit     Unit         @relation(fields: [unitId], references: [id])
+
+  restockItems  RestockItem[]
+  orderItems    OrderItem[]
+  notifications Notification[]
+
+  @@index([shopId, categoryId])
+  @@map("products")
+}

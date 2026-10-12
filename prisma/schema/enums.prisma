@@ -1,0 +1,15 @@
+enum Role {
+  SUPER_ADMIN
+  OWNER
+  STAFF
+}
+
+enum OrderStatus {
+  COMPLETED
+  CANCELLED
+}
+
+enum NotificationType {
+  LOW_STOCK
+  OUT_OF_STOCK
+}

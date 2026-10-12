@@ -1,0 +1,18 @@
+model Staff {
+  id            String    @id @default(uuid())
+  shopId        String
+  name          String
+  phone         String
+  designation   String
+  monthlySalary Decimal   @db.Decimal(12, 2)
+  joinedAt      DateTime
+  photoUrl      String?
+  deletedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id])
+
+  @@index([shopId, name])
+  @@map("staff")
+}

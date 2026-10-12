@@ -1,0 +1,24 @@
+model Shop {
+  id        String   @id @default(uuid())
+  shopName  String
+  phone     String
+  address   String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users           User[]
+  customers       Customer[]
+  vendors         Vendor[]
+  staff           Staff[]
+  units           Unit[]
+  companies       Company[]
+  productTypes    ProductType[]
+  products        Product[]
+  restockSessions RestockSession[]
+  orders          Order[]
+  notifications   Notification[]
+  activityLogs    ActivityLog[]
+
+  @@map("shops")
+}

@@ -1,0 +1,17 @@
+model ActivityLog {
+  id         String   @id @default(uuid())
+  shopId     String?
+  userId     String
+  action     String
+  entityType String
+  entityId   String
+  details    Json?
+  createdAt  DateTime @default(now())
+
+  shop Shop? @relation(fields: [shopId], references: [id])
+  user User  @relation(fields: [userId], references: [id])
+
+  @@index([shopId, entityType, entityId])
+  @@index([shopId, createdAt])
+  @@map("activity_logs")
+}

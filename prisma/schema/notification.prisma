@@ -1,0 +1,16 @@
+model Notification {
+  id        String           @id @default(uuid())
+  shopId    String
+  productId String?
+  type      NotificationType
+  title     String
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  shop    Shop     @relation(fields: [shopId], references: [id])
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@index([shopId, readAt])
+  @@map("notifications")
+}

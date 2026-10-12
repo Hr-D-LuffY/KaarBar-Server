@@ -1,14 +1,25 @@
 import cookieParser from "cookie-parser";
+import cors from "cors";
 import express, { type Request, type Response } from "express";
+import helmet from "helmet";
+import { config } from "./config";
 import { globalErrorHandler } from "./middleware/globalErrorHandler";
 import { notFound } from "./middleware/notFound";
+// import { generalRateLimiter } from "./middleware/rateLimiter";
 import { sendSuccess } from "./utils/sendResponse";
+
+// Render puts exactly one proxy in front of the app; locally there is none
+const PRODUCTION_PROXY_HOPS = 1;
 
 const app = express();
 
+app.set("trust proxy", config.isProduction ? PRODUCTION_PROXY_HOPS : false);
+app.use(helmet());
+app.use(cors({ origin: config.frontendUrl, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+// app.use(generalRateLimiter);
 
 app.get("/health", (_req: Request, res: Response) => {
   sendSuccess(res, { message: "Kaarbaar server is running" });

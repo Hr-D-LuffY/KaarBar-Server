@@ -7,6 +7,7 @@ import { globalErrorHandler } from "./middleware/globalErrorHandler";
 import { notFound } from "./middleware/notFound";
 // import { generalRateLimiter } from "./middleware/rateLimiter";
 import { AuthRoutes } from "./modules/auth/auth.route";
+import { ShopRoutes } from "./modules/shop/shop.route";
 import { UserRoutes } from "./modules/user/user.route";
 import { sendSuccess } from "./utils/sendResponse";
 
@@ -33,6 +34,7 @@ app.get("/", (_req: Request, res: Response) => {
 
 app.use("/api/v1/auth", AuthRoutes);
 app.use("/api/v1/users", UserRoutes);
+app.use("/api/v1/shop", ShopRoutes);
 
 app.use(notFound);
 app.use(globalErrorHandler);

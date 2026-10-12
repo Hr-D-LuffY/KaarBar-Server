@@ -1,5 +1,7 @@
 import express, { type Request, type Response } from "express";
-import httpStatus from "http-status";
+import { globalErrorHandler } from "./middleware/globalErrorHandler";
+import { notFound } from "./middleware/notFound";
+import { sendSuccess } from "./utils/sendResponse";
 
 const app = express();
 
@@ -7,19 +9,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.get("/health", (_req: Request, res: Response) => {
-  res.status(httpStatus.OK).json({
-    success: true,
-    message: "Kaarbaar server is running",
-    data: {},
-  });
+  sendSuccess(res, { message: "Kaarbaar server is running" });
 });
 
 app.get("/", (_req: Request, res: Response) => {
-  res.status(httpStatus.OK).json({
-    success: true,
-    message: "Welcome to Kaarbaar - paper and printing shop management",
-    data: {},
-  });
+  sendSuccess(res, { message: "Welcome to Kaarbaar - paper and printing shop management" });
 });
+
+app.use(notFound);
+app.use(globalErrorHandler);
 
 export default app;

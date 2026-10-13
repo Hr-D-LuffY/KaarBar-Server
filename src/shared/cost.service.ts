@@ -66,3 +66,6 @@ export const computeWeightedAvgCost = (
     .div(newStock)
     .toDecimalPlaces(UNIT_COST_DECIMAL_PLACES);
 };
+
+export const computeStockValue = (stock: number, avgCost: Prisma.Decimal) =>
+  avgCost.mul(stock).toDecimalPlaces(MONEY_DECIMAL_PLACES);

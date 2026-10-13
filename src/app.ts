@@ -14,6 +14,7 @@ import { ProductTypeRoutes } from "./modules/product-type/product-type.route";
 import { ShopRoutes } from "./modules/shop/shop.route";
 import { UnitRoutes } from "./modules/unit/unit.route";
 import { UserRoutes } from "./modules/user/user.route";
+import { VendorRoutes } from "./modules/vendor/vendor.route";
 import { sendSuccess } from "./utils/sendResponse";
 
 // Render puts exactly one proxy in front of the app; locally there is none
@@ -45,6 +46,7 @@ app.use("/api/v1/units", UnitRoutes);
 app.use("/api/v1/companies", CompanyRoutes);
 app.use("/api/v1/product-types", ProductTypeRoutes);
 app.use("/api/v1/products", ProductRoutes);
+app.use("/api/v1/vendors", VendorRoutes);
 
 app.use(notFound);
 app.use(globalErrorHandler);

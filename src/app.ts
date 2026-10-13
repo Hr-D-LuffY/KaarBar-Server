@@ -9,6 +9,7 @@ import { notFound } from "./middleware/notFound";
 import { AuthRoutes } from "./modules/auth/auth.route";
 import { CategoryRoutes } from "./modules/category/category.route";
 import { CompanyRoutes } from "./modules/company/company.route";
+import { ProductRoutes } from "./modules/product/product.route";
 import { ProductTypeRoutes } from "./modules/product-type/product-type.route";
 import { ShopRoutes } from "./modules/shop/shop.route";
 import { UnitRoutes } from "./modules/unit/unit.route";
@@ -43,6 +44,7 @@ app.use("/api/v1/categories", CategoryRoutes);
 app.use("/api/v1/units", UnitRoutes);
 app.use("/api/v1/companies", CompanyRoutes);
 app.use("/api/v1/product-types", ProductTypeRoutes);
+app.use("/api/v1/products", ProductRoutes);
 
 app.use(notFound);
 app.use(globalErrorHandler);

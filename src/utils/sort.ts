@@ -8,10 +8,11 @@ export type SortOrder = z.infer<typeof sortOrderSchema>;
 export const sortQuerySchema = <const Field extends readonly [string, ...string[]]>(
   allowedFields: Field,
   defaultField: Field[number],
+  defaultOrder: SortOrder = "desc",
 ) =>
   z.object({
     sortBy: z.enum(allowedFields).default(defaultField),
-    sortOrder: sortOrderSchema.default("desc"),
+    sortOrder: sortOrderSchema.default(defaultOrder),
   });
 
 export const buildOrderBy = <Field extends string>(

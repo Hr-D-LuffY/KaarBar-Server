@@ -33,6 +33,11 @@ export const listVendorsSchema = z.object({
 
 export const vendorIdSchema = z.object({ params: vendorIdParamsSchema });
 
+export const vendorLedgerSchema = z.object({
+  params: vendorIdParamsSchema,
+  query: z.object(paginationQuerySchema.shape),
+});
+
 export const createVendorSchema = z.object({
   body: z.object({ name: nameSchema, phone: phoneSchema, due: moneySchema.optional() }),
 });
@@ -59,6 +64,7 @@ export const createVendorPaymentSchema = z.object({
 });
 
 export type ListVendorsQuery = z.infer<typeof listVendorsSchema>["query"];
+export type ListVendorLedgerQuery = z.infer<typeof vendorLedgerSchema>["query"];
 export type CreateVendorInput = z.infer<typeof createVendorSchema>["body"];
 export type UpdateVendorInput = z.infer<typeof updateVendorSchema>["body"];
 export type CreateVendorPaymentInput = z.infer<typeof createVendorPaymentSchema>["body"];

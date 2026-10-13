@@ -1,5 +1,6 @@
 import httpStatus from "http-status";
-import type { Prisma } from "../../generated/prisma/client";
+import { z } from "zod";
+import { Prisma } from "../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { ActivityAction, ActivityEntity, logActivity } from "../../shared/activity-log.service";
 import { applyPayment } from "../../shared/due.service";
@@ -12,11 +13,25 @@ import { buildOrderBy } from "../../utils/sort";
 import type {
   CreateVendorInput,
   CreateVendorPaymentInput,
+  ListVendorLedgerQuery,
   ListVendorsQuery,
   UpdateVendorInput,
 } from "./vendor.validation";
 
 const RECENT_RESTOCK_COUNT = 5;
+
+const paymentDetailsSchema = z.object({ amount: z.string(), note: z.string().nullable() });
+
+type LedgerEntry = {
+  id: string;
+  type: "RESTOCK" | "PAYMENT";
+  createdAt: Date;
+  total: string | null;
+  paid: string;
+  // What the entry did to the due: the unpaid part of a restock (positive) or a payment (negative)
+  change: Prisma.Decimal;
+  note: string | null;
+};
 
 const vendorSelect = {
   id: true,
@@ -150,4 +165,72 @@ export const createVendorPayment = async (
   });
 
   return { vendorId: id, amount: formatMoney(amount), note: note ?? null, due: formatMoney(due) };
+};
+
+export const getVendorLedger = async (
+  shopId: string,
+  id: string,
+  pagination: ListVendorLedgerQuery,
+) => {
+  const [vendor, restocks, payments] = await prisma.$transaction([
+    prisma.vendor.findFirst({
+      where: { id, shopId, deletedAt: null },
+      select: { id: true, name: true, phone: true, due: true },
+    }),
+    prisma.restockSession.findMany({
+      where: { shopId, vendorId: id },
+      select: { id: true, createdAt: true, total: true, paid: true, note: true },
+    }),
+    prisma.activityLog.findMany({
+      where: {
+        shopId,
+        action: ActivityAction.VENDOR_PAYMENT,
+        entityType: ActivityEntity.VENDOR,
+        entityId: id,
+      },
+      select: { id: true, createdAt: true, details: true },
+    }),
+  ]);
+  if (!vendor) throw vendorNotFound();
+
+  const entries: LedgerEntry[] = [
+    ...restocks.map(
+      (restock): LedgerEntry => ({
+        id: restock.id,
+        type: "RESTOCK",
+        createdAt: restock.createdAt,
+        total: formatMoney(restock.total),
+        paid: formatMoney(restock.paid),
+        change: restock.total.minus(restock.paid),
+        note: restock.note,
+      }),
+    ),
+    ...payments.map((payment): LedgerEntry => {
+      const { amount, note } = paymentDetailsSchema.parse(payment.details);
+      return {
+        id: payment.id,
+        type: "PAYMENT",
+        createdAt: payment.createdAt,
+        total: null,
+        paid: amount,
+        change: new Prisma.Decimal(amount).neg(),
+        note,
+      };
+    }),
+  ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id));
+
+  // The current due is the balance after the newest entry; walking back undoes one entry at a time
+  let balance = vendor.due;
+  const ledger = entries.map(({ change, ...entry }) => {
+    const row = { ...entry, change: formatMoney(change), balance: formatMoney(balance) };
+    balance = balance.minus(change);
+    return row;
+  });
+
+  const { skip, take } = getPagination(pagination);
+  return {
+    vendor: { id: vendor.id, name: vendor.name, phone: vendor.phone, due: formatMoney(vendor.due) },
+    entries: ledger.slice(skip, skip + take),
+    meta: buildPaginationMeta({ ...pagination, total: ledger.length }),
+  };
 };

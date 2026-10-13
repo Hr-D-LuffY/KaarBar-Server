@@ -11,6 +11,7 @@ import {
   listVendorsSchema,
   updateVendorSchema,
   vendorIdSchema,
+  vendorLedgerSchema,
 } from "./vendor.validation";
 
 const router = Router();
@@ -20,6 +21,7 @@ router.use(verifyToken, requireRole(Role.OWNER), shopContext);
 router.get("/", validate(listVendorsSchema), vendorController.listVendors);
 router.post("/", validate(createVendorSchema), vendorController.createVendor);
 router.get("/:id", validate(vendorIdSchema), vendorController.getVendor);
+router.get("/:id/ledger", validate(vendorLedgerSchema), vendorController.getVendorLedger);
 router.patch("/:id", validate(updateVendorSchema), vendorController.updateVendor);
 router.delete("/:id", validate(vendorIdSchema), vendorController.deleteVendor);
 router.post(

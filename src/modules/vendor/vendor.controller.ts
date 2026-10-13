@@ -6,6 +6,7 @@ import * as vendorService from "./vendor.service";
 import type {
   CreateVendorInput,
   CreateVendorPaymentInput,
+  ListVendorLedgerQuery,
   ListVendorsQuery,
   UpdateVendorInput,
 } from "./vendor.validation";
@@ -61,5 +62,19 @@ export const createVendorPayment = catchAsync(async (req, res) => {
     statusCode: httpStatus.CREATED,
     message: "Payment recorded successfully",
     data: { payment },
+  });
+});
+
+export const getVendorLedger = catchAsync(async (req, res) => {
+  const { shopId } = getShopContext(req);
+  const { vendor, entries, meta } = await vendorService.getVendorLedger(
+    shopId,
+    String(req.params.id),
+    req.query as unknown as ListVendorLedgerQuery,
+  );
+  sendSuccess(res, {
+    message: "Vendor ledger fetched successfully",
+    data: { vendor, entries },
+    meta,
   });
 });

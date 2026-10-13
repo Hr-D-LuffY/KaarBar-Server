@@ -57,7 +57,8 @@ const toSessionView = ({ transportCost, total, paid, ...session }: SessionRow) =
   transportCost: formatMoney(transportCost),
   total: formatMoney(total),
   paid: formatMoney(paid),
-  due: formatMoney(total.minus(paid)),
+  // Opening stock was never bought on credit, so it adds nothing to a vendor's due
+  due: formatMoney(session.isOpeningStock ? ZERO : total.minus(paid)),
 });
 
 const toSessionWithItemsView = ({ items, ...session }: SessionWithItemsRow) => ({

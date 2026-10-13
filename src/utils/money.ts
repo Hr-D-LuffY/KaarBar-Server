@@ -3,25 +3,33 @@ import { Prisma } from "../generated/prisma/client";
 
 export const MONEY_DECIMAL_PLACES = 2;
 export const UNIT_COST_DECIMAL_PLACES = 4;
-// Money columns are Decimal(12,2)
+// Money columns are Decimal(12,2), per-unit costs Decimal(12,4)
 const MAX_MONEY = new Prisma.Decimal("9999999999.99");
-const MONEY_PATTERN = /^\d+(\.\d{1,2})?$/;
+const MAX_UNIT_COST = new Prisma.Decimal("99999999.9999");
 
 export const ZERO = new Prisma.Decimal(0);
 
 export const formatMoney = (amount: Prisma.Decimal) => amount.toFixed(MONEY_DECIMAL_PLACES);
+export const formatUnitCost = (cost: Prisma.Decimal) => cost.toFixed(UNIT_COST_DECIMAL_PLACES);
 
-// Accepts a number or a decimal string with at most 2 decimal places; parsed to Decimal so it is never a float downstream
-export const moneySchema = z
-  .union([z.number(), z.string()])
-  .transform((value) => String(value).trim())
-  .pipe(
-    z
-      .string()
-      .regex(MONEY_PATTERN, "Amount must be a number with at most 2 decimal places, not negative"),
-  )
-  .transform((value) => new Prisma.Decimal(value))
-  .refine((amount) => amount.lte(MAX_MONEY), "Amount is too large");
+// Accepts a number or a decimal string; parsed to Decimal so it is never a float downstream
+const decimalSchema = (decimalPlaces: number, max: Prisma.Decimal) =>
+  z
+    .union([z.number(), z.string()])
+    .transform((value) => String(value).trim())
+    .pipe(
+      z
+        .string()
+        .regex(
+          new RegExp(`^\\d+(\\.\\d{1,${decimalPlaces}})?$`),
+          `Amount must be a number with at most ${decimalPlaces} decimal places, not negative`,
+        ),
+    )
+    .transform((value) => new Prisma.Decimal(value))
+    .refine((amount) => amount.lte(max), "Amount is too large");
+
+export const moneySchema = decimalSchema(MONEY_DECIMAL_PLACES, MAX_MONEY);
+export const unitCostSchema = decimalSchema(UNIT_COST_DECIMAL_PLACES, MAX_UNIT_COST);
 
 export const positiveMoneySchema = moneySchema.refine(
   (amount) => amount.gt(ZERO),

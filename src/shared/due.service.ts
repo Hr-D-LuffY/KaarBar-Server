@@ -63,3 +63,19 @@ export const applyPayment = async (
   if (due === null) throw new AppError(httpStatus.NOT_FOUND, `${label} not found`);
   return due;
 };
+
+// Raises the due for a credit purchase or sale; the party must exist in this shop
+export const addDue = async (
+  tx: Prisma.TransactionClient,
+  party: DueParty,
+  target: PartyTarget,
+  amount: Prisma.Decimal,
+) => {
+  const where = partyWhere(target);
+  const data = { due: { increment: amount } };
+  const { count } =
+    party === "vendor"
+      ? await tx.vendor.updateMany({ where, data })
+      : await tx.customer.updateMany({ where, data });
+  if (count === 0) throw new AppError(httpStatus.NOT_FOUND, `${PARTY_LABEL[party]} not found`);
+};

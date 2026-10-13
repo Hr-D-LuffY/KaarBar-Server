@@ -2,10 +2,12 @@ import type { Prisma } from "../generated/prisma/client";
 
 export const ActivityAction = {
   VENDOR_PAYMENT: "VENDOR_PAYMENT",
+  RESTOCK_CREATE: "RESTOCK_CREATE",
 } as const;
 
 export const ActivityEntity = {
   VENDOR: "VENDOR",
+  RESTOCK: "RESTOCK",
 } as const;
 
 type LogActivityInput = {

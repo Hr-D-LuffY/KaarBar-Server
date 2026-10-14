@@ -5,11 +5,32 @@ import { shopContext } from "../../middleware/shopContext";
 import { validate } from "../../middleware/validate";
 import { verifyToken } from "../../middleware/verifyToken";
 import * as orderController from "./order.controller";
-import { cancelOrderSchema, createOrderSchema } from "./order.validation";
+import {
+  cancelOrderSchema,
+  createOrderSchema,
+  listOrdersSchema,
+  orderIdSchema,
+} from "./order.validation";
 
 const router = Router();
 
 router.use(verifyToken);
+
+router.get(
+  "/",
+  requireRole(Role.SUPER_ADMIN, Role.OWNER),
+  shopContext,
+  validate(listOrdersSchema),
+  orderController.listOrders,
+);
+
+router.get(
+  "/:id",
+  requireRole(Role.SUPER_ADMIN, Role.OWNER),
+  shopContext,
+  validate(orderIdSchema),
+  orderController.getOrder,
+);
 
 router.post(
   "/",

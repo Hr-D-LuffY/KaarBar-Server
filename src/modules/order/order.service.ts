@@ -5,6 +5,7 @@ import { ActivityAction, ActivityEntity, logActivity } from "../../shared/activi
 import { addDue, cancelDue } from "../../shared/due.service";
 import { deductStock, restoreStock } from "../../shared/stock.service";
 import { AppError } from "../../utils/AppError";
+import { buildDateRange } from "../../utils/date-range";
 import {
   formatMoney,
   formatUnitCost,
@@ -14,12 +15,14 @@ import {
   sumMoney,
   ZERO,
 } from "../../utils/money";
+import { buildPaginationMeta, getPagination } from "../../utils/pagination";
 import type { ShopContext } from "../../utils/request-context";
-import type { CancelOrderInput, CreateOrderInput } from "./order.validation";
+import { buildOrderBy } from "../../utils/sort";
+import type { CancelOrderInput, CreateOrderInput, ListOrdersQuery } from "./order.validation";
 
 const INVOICE_NO_DIGITS = 6;
 
-const orderSelect = {
+const orderListSelect = {
   id: true,
   invoiceNo: true,
   customerId: true,
@@ -30,6 +33,10 @@ const orderSelect = {
   status: true,
   cancelReason: true,
   createdAt: true,
+} as const;
+
+const orderSelect = {
+  ...orderListSelect,
   items: {
     orderBy: { createdAt: "asc" },
     select: {
@@ -52,6 +59,7 @@ const orderSelect = {
 } satisfies Prisma.OrderSelect;
 
 type OrderRow = Prisma.OrderGetPayload<{ select: typeof orderSelect }>;
+type OrderListRow = Prisma.OrderGetPayload<{ select: typeof orderListSelect }>;
 
 const orderNotFound = () => new AppError(httpStatus.NOT_FOUND, "Order not found");
 
@@ -61,7 +69,7 @@ const validationError = (field: string, message: string) =>
 export const formatInvoiceNo = (invoiceNo: number) =>
   `INV-${String(invoiceNo).padStart(INVOICE_NO_DIGITS, "0")}`;
 
-const toOrderView = ({ invoiceNo, discount, total, paid, items, ...order }: OrderRow) => ({
+const toOrderListView = ({ invoiceNo, discount, total, paid, ...order }: OrderListRow) => ({
   ...order,
   invoiceNo,
   invoiceNumber: formatInvoiceNo(invoiceNo),
@@ -70,6 +78,10 @@ const toOrderView = ({ invoiceNo, discount, total, paid, items, ...order }: Orde
   total: formatMoney(total),
   paid: formatMoney(paid),
   remaining: formatMoney(total.minus(paid)),
+});
+
+const toOrderView = ({ items, ...order }: OrderRow) => ({
+  ...toOrderListView(order),
   items: items.map(({ unitPrice, unitCost, lineTotal, ...item }) => ({
     ...item,
     unitPrice: formatUnitCost(unitPrice),
@@ -113,6 +125,41 @@ const findOrder = async (shopId: string, id: string) => {
   if (!order) throw orderNotFound();
   return order;
 };
+
+export const listOrders = async (
+  shopId: string,
+  { status, customerId, search, from, to, sortBy, sortOrder, ...pagination }: ListOrdersQuery,
+) => {
+  const createdAt = buildDateRange({ from, to });
+  const where: Prisma.OrderWhereInput = {
+    shopId,
+    ...(status && { status }),
+    ...(customerId && { customerId }),
+    ...(search !== undefined && { invoiceNo: search }),
+    ...(Object.keys(createdAt).length > 0 && { createdAt }),
+  };
+
+  const [rows, total] = await prisma.$transaction([
+    prisma.order.findMany({
+      where,
+      orderBy: buildOrderBy(sortBy, sortOrder),
+      select: { ...orderListSelect, _count: { select: { items: true } } },
+      ...getPagination(pagination),
+    }),
+    prisma.order.count({ where }),
+  ]);
+
+  return {
+    orders: rows.map(({ _count, ...order }) => ({
+      ...toOrderListView(order),
+      itemCount: _count.items,
+    })),
+    meta: buildPaginationMeta({ ...pagination, total }),
+  };
+};
+
+export const getOrder = async (shopId: string, id: string) =>
+  toOrderView(await findOrder(shopId, id));
 
 export const createOrder = async (
   { shopId, userId }: ShopContext,

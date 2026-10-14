@@ -3,7 +3,22 @@ import { catchAsync } from "../../utils/catchAsync";
 import { getShopContext } from "../../utils/request-context";
 import { sendSuccess } from "../../utils/sendResponse";
 import * as orderService from "./order.service";
-import type { CancelOrderInput, CreateOrderInput } from "./order.validation";
+import type { CancelOrderInput, CreateOrderInput, ListOrdersQuery } from "./order.validation";
+
+export const listOrders = catchAsync(async (req, res) => {
+  const { shopId } = getShopContext(req);
+  const { orders, meta } = await orderService.listOrders(
+    shopId,
+    req.query as unknown as ListOrdersQuery,
+  );
+  sendSuccess(res, { message: "Orders fetched successfully", data: { orders }, meta });
+});
+
+export const getOrder = catchAsync(async (req, res) => {
+  const { shopId } = getShopContext(req);
+  const order = await orderService.getOrder(shopId, String(req.params.id));
+  sendSuccess(res, { message: "Order fetched successfully", data: { order } });
+});
 
 export const createOrder = catchAsync(async (req, res) => {
   const { order, warnings } = await orderService.createOrder(

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { Role } from "../../generated/prisma/client";
+import { invoiceEmailRateLimiter } from "../../middleware/rateLimiter";
 import { requireRole } from "../../middleware/requireRole";
 import { shopContext } from "../../middleware/shopContext";
 import { validate } from "../../middleware/validate";
@@ -47,6 +48,15 @@ router.post(
   shopContext,
   validate(createOrderSchema),
   orderController.createOrder,
+);
+
+router.post(
+  "/:id/email",
+  requireRole(Role.OWNER),
+  shopContext,
+  invoiceEmailRateLimiter,
+  validate(orderIdSchema),
+  orderController.emailOrderInvoice,
 );
 
 router.post(

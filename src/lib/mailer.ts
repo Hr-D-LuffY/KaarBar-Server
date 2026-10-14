@@ -1,6 +1,9 @@
 import path from "node:path";
 import nodemailer from "nodemailer";
+import httpStatus from "http-status";
 import { config } from "../config";
+import { AppError } from "../utils/AppError";
+import { logger } from "../utils/logger";
 import { buildPasswordResetEmail, LOGO_CONTENT_ID } from "./reset-password-email";
 
 const SMTPS_PORT = 465;
@@ -36,4 +39,45 @@ export const sendPasswordResetEmail = async ({ name, email, token }: PasswordRes
     html,
     attachments: [{ filename: "kaarbaar-logo.png", path: LOGO_PATH, cid: LOGO_CONTENT_ID }],
   });
+};
+
+type InvoiceEmail = {
+  to: string;
+  customerName: string;
+  shopName: string;
+  invoiceNumber: string;
+  fileName: string;
+  pdf: Buffer;
+};
+
+// A failed send is reported to the caller: unlike a password reset, the owner is waiting on this one
+export const sendInvoiceEmail = async ({
+  to,
+  customerName,
+  shopName,
+  invoiceNumber,
+  fileName,
+  pdf,
+}: InvoiceEmail) => {
+  const text = [
+    `Hello ${customerName},`,
+    "",
+    `Please find your invoice ${invoiceNumber} from ${shopName} attached.`,
+    "",
+    `Thank you,`,
+    shopName,
+  ].join("\n");
+
+  try {
+    await transporter.sendMail({
+      from: config.mailFrom,
+      to,
+      subject: `Invoice ${invoiceNumber} from ${shopName}`,
+      text,
+      attachments: [{ filename: fileName, content: pdf, contentType: "application/pdf" }],
+    });
+  } catch (error) {
+    logger.error("Failed to send invoice email", error);
+    throw new AppError(httpStatus.BAD_GATEWAY, "Could not send the email, please try again later");
+  }
 };

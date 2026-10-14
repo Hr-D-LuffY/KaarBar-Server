@@ -194,7 +194,26 @@ export const getOrderInvoice = async (shopId: string, id: string) => {
     cancelReason: order.cancelReason,
   });
 
-  return { fileName: `${view.invoiceNumber}.pdf`, pdf };
+  return {
+    fileName: `${view.invoiceNumber}.pdf`,
+    invoiceNumber: view.invoiceNumber,
+    shopName: shop.shopName,
+    pdf,
+  };
+};
+
+export const getInvoiceRecipient = async (shopId: string, id: string) => {
+  const order = await prisma.order.findFirst({
+    where: { id, shopId },
+    select: { customer: { select: { name: true, email: true } } },
+  });
+  if (!order) throw orderNotFound();
+
+  const { customer } = order;
+  if (!customer?.email) {
+    throw new AppError(httpStatus.BAD_REQUEST, "This order's customer has no email address saved");
+  }
+  return { name: customer.name, email: customer.email };
 };
 
 export const createOrder = async (

@@ -1,4 +1,5 @@
 import httpStatus from "http-status";
+import { sendInvoiceEmail } from "../../lib/mailer";
 import { catchAsync } from "../../utils/catchAsync";
 import { getShopContext } from "../../utils/request-context";
 import { sendSuccess } from "../../utils/sendResponse";
@@ -36,6 +37,27 @@ export const getOrderInvoice = catchAsync(async (req, res) => {
     `${download ? "attachment" : "inline"}; filename="${fileName}"`,
   );
   res.send(pdf);
+});
+
+export const emailOrderInvoice = catchAsync(async (req, res) => {
+  const { shopId } = getShopContext(req);
+  const id = String(req.params.id);
+
+  const recipient = await orderService.getInvoiceRecipient(shopId, id);
+  const { fileName, invoiceNumber, shopName, pdf } = await orderService.getOrderInvoice(shopId, id);
+  await sendInvoiceEmail({
+    to: recipient.email,
+    customerName: recipient.name,
+    shopName,
+    invoiceNumber,
+    fileName,
+    pdf,
+  });
+
+  sendSuccess(res, {
+    message: "Invoice emailed successfully",
+    data: { sentTo: recipient.email },
+  });
 });
 
 export const createOrder = catchAsync(async (req, res) => {

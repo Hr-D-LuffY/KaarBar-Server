@@ -9,6 +9,7 @@ import {
   createCustomerPaymentSchema,
   createCustomerSchema,
   customerIdSchema,
+  customerLedgerSchema,
   listCustomersSchema,
   updateCustomerSchema,
 } from "./customer.validation";
@@ -20,6 +21,7 @@ router.use(verifyToken, requireRole(Role.SUPER_ADMIN, Role.OWNER), shopContext);
 router.get("/", validate(listCustomersSchema), customerController.listCustomers);
 router.post("/", validate(createCustomerSchema), customerController.createCustomer);
 router.get("/:id", validate(customerIdSchema), customerController.getCustomer);
+router.get("/:id/ledger", validate(customerLedgerSchema), customerController.getCustomerLedger);
 router.patch("/:id", validate(updateCustomerSchema), customerController.updateCustomer);
 router.delete("/:id", validate(customerIdSchema), customerController.deleteCustomer);
 router.post(

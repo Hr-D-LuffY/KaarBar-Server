@@ -1,9 +1,10 @@
 import httpStatus from "http-status";
-import { z } from "zod";
 import { Prisma } from "../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { ActivityAction, ActivityEntity } from "../../shared/activity-log.service";
 import { recordPayment } from "../../shared/due.service";
+import { paginateLedger } from "../../shared/ledger.service";
+import { paymentLogDetailsSchema } from "../../shared/payment.validation";
 import { AppError } from "../../utils/AppError";
 import { formatMoney, ZERO } from "../../utils/money";
 import { buildPaginationMeta, getPagination } from "../../utils/pagination";
@@ -19,8 +20,6 @@ import type {
 } from "./vendor.validation";
 
 const RECENT_RESTOCK_COUNT = 5;
-
-const paymentDetailsSchema = z.object({ amount: z.string(), note: z.string().nullable() });
 
 type LedgerEntry = {
   id: string;
@@ -197,7 +196,7 @@ export const getVendorLedger = async (
       }),
     ),
     ...payments.map((payment): LedgerEntry => {
-      const { amount, note } = paymentDetailsSchema.parse(payment.details);
+      const { amount, note } = paymentLogDetailsSchema.parse(payment.details);
       return {
         id: payment.id,
         type: "PAYMENT",
@@ -208,20 +207,12 @@ export const getVendorLedger = async (
         note,
       };
     }),
-  ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id));
+  ];
 
-  // The current due is the balance after the newest entry; walking back undoes one entry at a time
-  let balance = vendor.due;
-  const ledger = entries.map(({ change, ...entry }) => {
-    const row = { ...entry, change: formatMoney(change), balance: formatMoney(balance) };
-    balance = balance.minus(change);
-    return row;
-  });
-
-  const { skip, take } = getPagination(pagination);
+  const { entries: page, meta } = paginateLedger(vendor.due, entries, pagination);
   return {
     vendor: { id: vendor.id, name: vendor.name, phone: vendor.phone, due: formatMoney(vendor.due) },
-    entries: ledger.slice(skip, skip + take),
-    meta: buildPaginationMeta({ ...pagination, total: ledger.length }),
+    entries: page,
+    meta,
   };
 };

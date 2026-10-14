@@ -12,3 +12,9 @@ export const paymentBodySchema = z.object({
     .max(MAX_PAYMENT_NOTE_LENGTH, `Note must be at most ${MAX_PAYMENT_NOTE_LENGTH} characters`)
     .optional(),
 });
+
+// The `details` of a CUSTOMER_PAYMENT / VENDOR_PAYMENT activity-log row
+export const paymentLogDetailsSchema = z.object({
+  amount: z.string(),
+  note: z.string().nullable(),
+});

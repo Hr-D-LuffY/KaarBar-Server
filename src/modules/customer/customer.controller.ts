@@ -6,6 +6,7 @@ import * as customerService from "./customer.service";
 import type {
   CreateCustomerInput,
   CreateCustomerPaymentInput,
+  ListCustomerLedgerQuery,
   ListCustomersQuery,
   UpdateCustomerInput,
 } from "./customer.validation";
@@ -61,5 +62,19 @@ export const createCustomerPayment = catchAsync(async (req, res) => {
     statusCode: httpStatus.CREATED,
     message: "Payment recorded successfully",
     data: { payment },
+  });
+});
+
+export const getCustomerLedger = catchAsync(async (req, res) => {
+  const { shopId } = getShopContext(req);
+  const { customer, entries, meta } = await customerService.getCustomerLedger(
+    shopId,
+    String(req.params.id),
+    req.query as unknown as ListCustomerLedgerQuery,
+  );
+  sendSuccess(res, {
+    message: "Customer ledger fetched successfully",
+    data: { customer, entries },
+    meta,
   });
 });

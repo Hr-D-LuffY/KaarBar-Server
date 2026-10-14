@@ -3,7 +3,7 @@ import { Prisma } from "../generated/prisma/client";
 import { UNIT_COST_DECIMAL_PLACES } from "./money";
 
 // Stock is stored in an Int column, so one line stays well below its limit
-const MAX_ITEM_QUANTITY = 1_000_000_000;
+export const MAX_ITEM_QUANTITY = 1_000_000_000;
 const DECIMAL_BASE = 10;
 const TRAILING_RATE_ZEROS = /(\.\d{2}\d*?)0+$/; // keeps at least 2 decimals
 

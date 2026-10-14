@@ -17,12 +17,11 @@ import {
   ZERO,
 } from "../../utils/money";
 import { buildPaginationMeta, getPagination } from "../../utils/pagination";
+import { formatInvoiceNo } from "../../utils/invoice-no";
 import { formatQuantity, formatRatePerUnit } from "../../utils/quantity";
 import type { ShopContext } from "../../utils/request-context";
 import { buildOrderBy } from "../../utils/sort";
 import type { CancelOrderInput, CreateOrderInput, ListOrdersQuery } from "./order.validation";
-
-const INVOICE_NO_DIGITS = 6;
 
 const orderListSelect = {
   id: true,
@@ -67,9 +66,6 @@ const orderNotFound = () => new AppError(httpStatus.NOT_FOUND, "Order not found"
 
 const validationError = (field: string, message: string) =>
   new AppError(httpStatus.BAD_REQUEST, "Validation failed", [{ field, message }]);
-
-export const formatInvoiceNo = (invoiceNo: number) =>
-  `INV-${String(invoiceNo).padStart(INVOICE_NO_DIGITS, "0")}`;
 
 const toOrderListView = ({ invoiceNo, discount, total, paid, ...order }: OrderListRow) => ({
   ...order,

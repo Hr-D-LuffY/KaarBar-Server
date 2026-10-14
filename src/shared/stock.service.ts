@@ -127,3 +127,25 @@ export const receiveStock = async (
     select: { stock: true, avgCost: true },
   });
 };
+
+// Manual correction in either direction; a decrease reuses deductStock so it can't go below zero
+export const adjustStock = async (
+  tx: Tx,
+  target: StockTarget,
+  change: number,
+): Promise<{ stock: number; notification: Notification | null }> => {
+  if (change < 0) {
+    const { stock, notification } = await deductStock(tx, target, -change);
+    return { stock, notification };
+  }
+
+  const { shopId, productId } = target;
+  const [row] = await tx.$queryRaw<{ stock: number }[]>(Prisma.sql`
+    UPDATE "shop_products"
+    SET "stock" = "stock" + ${change}, "updatedAt" = NOW()
+    WHERE "shopId" = ${shopId} AND "productId" = ${productId} AND "deletedAt" IS NULL
+    RETURNING "stock"
+  `);
+  if (!row) throw productNotFound();
+  return { stock: row.stock, notification: null };
+};

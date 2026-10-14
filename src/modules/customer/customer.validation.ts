@@ -71,6 +71,11 @@ export const updateCustomerSchema = z.object({
     ),
 });
 
+export const customerLedgerSchema = z.object({
+  params: customerIdParamsSchema,
+  query: z.object(paginationQuerySchema.shape),
+});
+
 export const createCustomerPaymentSchema = z.object({
   params: customerIdParamsSchema,
   body: paymentBodySchema,
@@ -79,4 +84,5 @@ export const createCustomerPaymentSchema = z.object({
 export type ListCustomersQuery = z.infer<typeof listCustomersSchema>["query"];
 export type CreateCustomerInput = z.infer<typeof createCustomerSchema>["body"];
 export type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>["body"];
+export type ListCustomerLedgerQuery = z.infer<typeof customerLedgerSchema>["query"];
 export type CreateCustomerPaymentInput = z.infer<typeof createCustomerPaymentSchema>["body"];

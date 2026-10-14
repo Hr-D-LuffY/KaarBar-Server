@@ -1,8 +1,12 @@
 import httpStatus from "http-status";
-import type { Prisma } from "../../generated/prisma/client";
+import { OrderStatus, Prisma } from "../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
+import { ActivityAction, ActivityEntity } from "../../shared/activity-log.service";
 import { recordPayment } from "../../shared/due.service";
+import { paginateLedger } from "../../shared/ledger.service";
+import { paymentLogDetailsSchema } from "../../shared/payment.validation";
 import { AppError } from "../../utils/AppError";
+import { formatInvoiceNo } from "../../utils/invoice-no";
 import { formatMoney, ZERO } from "../../utils/money";
 import { buildPaginationMeta, getPagination } from "../../utils/pagination";
 import type { ShopContext } from "../../utils/request-context";
@@ -11,11 +15,23 @@ import { buildOrderBy } from "../../utils/sort";
 import type {
   CreateCustomerInput,
   CreateCustomerPaymentInput,
+  ListCustomerLedgerQuery,
   ListCustomersQuery,
   UpdateCustomerInput,
 } from "./customer.validation";
 
 const RECENT_ORDER_COUNT = 5;
+
+type LedgerEntry = {
+  id: string;
+  type: "ORDER" | "ORDER_CANCEL" | "PAYMENT";
+  createdAt: Date;
+  invoiceNumber: string | null;
+  total: string | null;
+  paid: string;
+  change: Prisma.Decimal;
+  note: string | null;
+};
 
 const customerSelect = {
   id: true,
@@ -170,5 +186,111 @@ export const createCustomerPayment = async (
     amount: formatMoney(amount),
     note: note ?? null,
     due: formatMoney(due),
+  };
+};
+
+export const getCustomerLedger = async (
+  shopId: string,
+  id: string,
+  pagination: ListCustomerLedgerQuery,
+) => {
+  const [customer, orders, payments] = await prisma.$transaction([
+    prisma.customer.findFirst({
+      where: { id, shopId, deletedAt: null },
+      select: { id: true, name: true, phone: true, due: true },
+    }),
+    prisma.order.findMany({
+      where: { shopId, customerId: id },
+      select: {
+        id: true,
+        invoiceNo: true,
+        total: true,
+        paid: true,
+        status: true,
+        cancelReason: true,
+        createdAt: true,
+      },
+    }),
+    prisma.activityLog.findMany({
+      where: {
+        shopId,
+        action: ActivityAction.CUSTOMER_PAYMENT,
+        entityType: ActivityEntity.CUSTOMER,
+        entityId: id,
+      },
+      select: { id: true, createdAt: true, details: true },
+    }),
+  ]);
+  if (!customer) throw customerNotFound();
+
+  const cancelledIds = orders
+    .filter((order) => order.status === OrderStatus.CANCELLED)
+    .map((order) => order.id);
+  const cancellations = await prisma.activityLog.findMany({
+    where: {
+      shopId,
+      action: ActivityAction.ORDER_CANCEL,
+      entityType: ActivityEntity.ORDER,
+      entityId: { in: cancelledIds },
+    },
+    select: { entityId: true, createdAt: true },
+  });
+  const cancelledAt = new Map(cancellations.map((log) => [log.entityId, log.createdAt]));
+
+  const entries: LedgerEntry[] = [
+    ...orders.flatMap((order): LedgerEntry[] => {
+      const unpaid = order.total.minus(order.paid);
+      const base = {
+        invoiceNumber: formatInvoiceNo(order.invoiceNo),
+        total: formatMoney(order.total),
+        paid: formatMoney(order.paid),
+      };
+      const sale: LedgerEntry = {
+        ...base,
+        id: order.id,
+        type: "ORDER",
+        createdAt: order.createdAt,
+        change: unpaid,
+        note: null,
+      };
+      // A cancelled order takes back what it added to the due, as its own entry at the time of cancelling
+      if (order.status !== OrderStatus.CANCELLED) return [sale];
+      return [
+        sale,
+        {
+          ...base,
+          id: `${order.id}:cancel`,
+          type: "ORDER_CANCEL",
+          createdAt: cancelledAt.get(order.id) ?? order.createdAt,
+          change: unpaid.neg(),
+          note: order.cancelReason,
+        },
+      ];
+    }),
+    ...payments.map((payment): LedgerEntry => {
+      const { amount, note } = paymentLogDetailsSchema.parse(payment.details);
+      return {
+        id: payment.id,
+        type: "PAYMENT",
+        createdAt: payment.createdAt,
+        invoiceNumber: null,
+        total: null,
+        paid: amount,
+        change: new Prisma.Decimal(amount).neg(),
+        note,
+      };
+    }),
+  ];
+
+  const { entries: page, meta } = paginateLedger(customer.due, entries, pagination);
+  return {
+    customer: {
+      id: customer.id,
+      name: customer.name,
+      phone: customer.phone,
+      due: formatMoney(customer.due),
+    },
+    entries: page,
+    meta,
   };
 };

@@ -1,5 +1,6 @@
 import httpStatus from "http-status";
 import { OrderStatus, type Prisma } from "../../generated/prisma/client";
+import { buildInvoicePdf } from "../../lib/invoice-pdf";
 import { prisma } from "../../lib/prisma";
 import { ActivityAction, ActivityEntity, logActivity } from "../../shared/activity-log.service";
 import { addDue, cancelDue } from "../../shared/due.service";
@@ -16,6 +17,7 @@ import {
   ZERO,
 } from "../../utils/money";
 import { buildPaginationMeta, getPagination } from "../../utils/pagination";
+import { formatQuantity, formatRatePerUnit } from "../../utils/quantity";
 import type { ShopContext } from "../../utils/request-context";
 import { buildOrderBy } from "../../utils/sort";
 import type { CancelOrderInput, CreateOrderInput, ListOrdersQuery } from "./order.validation";
@@ -160,6 +162,40 @@ export const listOrders = async (
 
 export const getOrder = async (shopId: string, id: string) =>
   toOrderView(await findOrder(shopId, id));
+
+// The PDF is built from the saved order on every request and never stored
+export const getOrderInvoice = async (shopId: string, id: string) => {
+  const [order, shop] = await Promise.all([
+    findOrder(shopId, id),
+    prisma.shop.findUniqueOrThrow({
+      where: { id: shopId },
+      select: { shopName: true, phone: true, address: true },
+    }),
+  ]);
+
+  const view = toOrderView(order);
+  const pdf = await buildInvoicePdf({
+    shop: { name: shop.shopName, phone: shop.phone, address: shop.address },
+    invoiceNumber: view.invoiceNumber,
+    issuedAt: order.createdAt,
+    customer: order.customer && { name: order.customer.name, phone: order.customer.phone },
+    lines: order.items.map(({ product, quantity, unitPrice, lineTotal }) => ({
+      name: product.name,
+      quantity: `${formatQuantity(quantity, product.unit.decimalPlaces)} ${product.unit.symbol}`,
+      rate: formatRatePerUnit(unitPrice, product.unit.decimalPlaces),
+      amount: formatMoney(lineTotal),
+    })),
+    subtotal: view.subtotal,
+    discount: view.discount,
+    total: view.total,
+    paid: view.paid,
+    remaining: view.remaining,
+    isCancelled: order.status === OrderStatus.CANCELLED,
+    cancelReason: order.cancelReason,
+  });
+
+  return { fileName: `${view.invoiceNumber}.pdf`, pdf };
+};
 
 export const createOrder = async (
   { shopId, userId }: ShopContext,

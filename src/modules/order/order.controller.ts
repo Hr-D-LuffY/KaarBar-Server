@@ -3,7 +3,12 @@ import { catchAsync } from "../../utils/catchAsync";
 import { getShopContext } from "../../utils/request-context";
 import { sendSuccess } from "../../utils/sendResponse";
 import * as orderService from "./order.service";
-import type { CancelOrderInput, CreateOrderInput, ListOrdersQuery } from "./order.validation";
+import type {
+  CancelOrderInput,
+  CreateOrderInput,
+  ListOrdersQuery,
+  OrderInvoiceQuery,
+} from "./order.validation";
 
 export const listOrders = catchAsync(async (req, res) => {
   const { shopId } = getShopContext(req);
@@ -18,6 +23,19 @@ export const getOrder = catchAsync(async (req, res) => {
   const { shopId } = getShopContext(req);
   const order = await orderService.getOrder(shopId, String(req.params.id));
   sendSuccess(res, { message: "Order fetched successfully", data: { order } });
+});
+
+export const getOrderInvoice = catchAsync(async (req, res) => {
+  const { shopId } = getShopContext(req);
+  const { download } = req.query as unknown as OrderInvoiceQuery;
+  const { fileName, pdf } = await orderService.getOrderInvoice(shopId, String(req.params.id));
+
+  res.type("application/pdf");
+  res.setHeader(
+    "Content-Disposition",
+    `${download ? "attachment" : "inline"}; filename="${fileName}"`,
+  );
+  res.send(pdf);
 });
 
 export const createOrder = catchAsync(async (req, res) => {

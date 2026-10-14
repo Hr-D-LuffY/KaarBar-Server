@@ -10,6 +10,7 @@ import {
   createOrderSchema,
   listOrdersSchema,
   orderIdSchema,
+  orderInvoiceSchema,
 } from "./order.validation";
 
 const router = Router();
@@ -30,6 +31,14 @@ router.get(
   shopContext,
   validate(orderIdSchema),
   orderController.getOrder,
+);
+
+router.get(
+  "/:id/invoice",
+  requireRole(Role.SUPER_ADMIN, Role.OWNER),
+  shopContext,
+  validate(orderInvoiceSchema),
+  orderController.getOrderInvoice,
 );
 
 router.post(

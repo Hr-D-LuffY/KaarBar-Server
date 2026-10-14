@@ -70,6 +70,11 @@ export const listOrdersSchema = z.object({
 
 export const orderIdSchema = z.object({ params: orderIdParamsSchema });
 
+export const orderInvoiceSchema = z.object({
+  params: orderIdParamsSchema,
+  query: z.object({ download: z.stringbool().optional() }),
+});
+
 export const cancelOrderSchema = z.object({
   params: orderIdParamsSchema,
   body: z.object({
@@ -86,4 +91,5 @@ export const cancelOrderSchema = z.object({
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>["body"];
 export type ListOrdersQuery = z.infer<typeof listOrdersSchema>["query"];
+export type OrderInvoiceQuery = z.infer<typeof orderInvoiceSchema>["query"];
 export type CancelOrderInput = z.infer<typeof cancelOrderSchema>["body"];

@@ -1,12 +1,14 @@
 import httpStatus from "http-status";
-import { OrderStatus, type Prisma } from "../../generated/prisma/client";
+import { type Notification, OrderStatus, type Prisma } from "../../generated/prisma/client";
 import { buildInvoicePdf } from "../../lib/invoice-pdf";
 import { prisma } from "../../lib/prisma";
 import { ActivityAction, ActivityEntity, logActivity } from "../../shared/activity-log.service";
 import { addDue, cancelDue } from "../../shared/due.service";
+import { pushNotifications } from "../../shared/notification-push";
 import { deductStock, restoreStock } from "../../shared/stock.service";
 import { AppError } from "../../utils/AppError";
 import { buildDateRange } from "../../utils/date-range";
+import { formatInvoiceNo } from "../../utils/invoice-no";
 import {
   formatMoney,
   formatUnitCost,
@@ -17,7 +19,6 @@ import {
   ZERO,
 } from "../../utils/money";
 import { buildPaginationMeta, getPagination } from "../../utils/pagination";
-import { formatInvoiceNo } from "../../utils/invoice-no";
 import { formatQuantity, formatRatePerUnit } from "../../utils/quantity";
 import type { ShopContext } from "../../utils/request-context";
 import { buildOrderBy } from "../../utils/sort";
@@ -227,6 +228,7 @@ export const createOrder = async (
   }
   const unpaid = total.minus(paid);
 
+  const notifications: Notification[] = [];
   const orderId = await prisma.$transaction(async (tx) => {
     if (customerId) {
       await assertCustomerInShop(tx, shopId, customerId);
@@ -237,7 +239,8 @@ export const createOrder = async (
     const unitCosts = new Map<string, Prisma.Decimal>();
     const lockOrder = [...items].sort((a, b) => a.productId.localeCompare(b.productId));
     for (const { productId, quantity } of lockOrder) {
-      const { avgCost } = await deductStock(tx, { shopId, productId }, quantity);
+      const { avgCost, notification } = await deductStock(tx, { shopId, productId }, quantity);
+      if (notification) notifications.push(notification);
       unitCosts.set(productId, avgCost);
     }
 
@@ -278,6 +281,8 @@ export const createOrder = async (
 
     return order.id;
   });
+
+  pushNotifications(shopId, notifications);
 
   const order = await findOrder(shopId, orderId);
   return { order: toOrderView(order), warnings: findBelowCostWarnings(order) };

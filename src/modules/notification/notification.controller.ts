@@ -1,3 +1,4 @@
+import { openStream } from "../../lib/sse-hub";
 import { catchAsync } from "../../utils/catchAsync";
 import { getShopContext } from "../../utils/request-context";
 import { sendSuccess } from "../../utils/sendResponse";
@@ -15,6 +16,12 @@ export const listNotifications = catchAsync(async (req, res) => {
     data: { notifications },
     meta,
   });
+});
+
+// Streams events, so it bypasses the JSON envelope helpers
+export const streamNotifications = catchAsync(async (req, res) => {
+  const { shopId } = getShopContext(req);
+  openStream(shopId, req, res);
 });
 
 export const getUnreadCount = catchAsync(async (req, res) => {

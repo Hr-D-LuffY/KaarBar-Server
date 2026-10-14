@@ -13,6 +13,7 @@ router.use(verifyToken, requireRole(Role.OWNER), shopContext);
 
 router.get("/", validate(listNotificationsSchema), notificationController.listNotifications);
 router.get("/unread-count", notificationController.getUnreadCount);
+router.get("/stream", notificationController.streamNotifications);
 router.patch("/read-all", notificationController.markAllNotificationsRead);
 router.patch(
   "/:id/read",

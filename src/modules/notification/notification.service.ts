@@ -1,6 +1,7 @@
 import httpStatus from "http-status";
 import type { Prisma } from "../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
+import { toNotificationView } from "../../shared/notification-push";
 import { AppError } from "../../utils/AppError";
 import { buildPaginationMeta, getPagination } from "../../utils/pagination";
 import { buildOrderBy } from "../../utils/sort";
@@ -14,13 +15,6 @@ const notificationSelect = {
   readAt: true,
   createdAt: true,
 } as const;
-
-type NotificationRow = Prisma.NotificationGetPayload<{ select: typeof notificationSelect }>;
-
-const toNotificationView = (notification: NotificationRow) => ({
-  ...notification,
-  isRead: notification.readAt !== null,
-});
 
 export const listNotifications = async (
   shopId: string,

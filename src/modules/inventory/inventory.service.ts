@@ -3,6 +3,7 @@ import { OrderStatus, type Prisma } from "../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { ActivityAction, ActivityEntity, logActivity } from "../../shared/activity-log.service";
 import { computeStockValue } from "../../shared/cost.service";
+import { pushNotifications } from "../../shared/notification-push";
 import { adjustStock } from "../../shared/stock.service";
 import { AppError } from "../../utils/AppError";
 import { formatInvoiceNo } from "../../utils/invoice-no";
@@ -106,7 +107,7 @@ export const createStockAdjustment = async (
   { shopId, userId }: ShopContext,
   { productId, change, reason, note }: CreateStockAdjustmentInput,
 ) => {
-  const { stock } = await prisma.$transaction(async (tx) => {
+  const { stock, notification } = await prisma.$transaction(async (tx) => {
     const result = await adjustStock(tx, { shopId, productId }, change);
     await logActivity(tx, {
       shopId,
@@ -118,6 +119,8 @@ export const createStockAdjustment = async (
     });
     return result;
   });
+
+  if (notification) pushNotifications(shopId, [notification]);
 
   return { productId, change, reason, note: note ?? null, stock };
 };

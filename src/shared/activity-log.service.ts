@@ -7,6 +7,7 @@ export const ActivityAction = {
   ORDER_CREATE: "ORDER_CREATE",
   ORDER_CANCEL: "ORDER_CANCEL",
   STOCK_ADJUSTMENT: "STOCK_ADJUSTMENT",
+  SALARY_PAYMENT: "SALARY_PAYMENT",
 } as const;
 
 export const ActivityEntity = {
@@ -15,6 +16,7 @@ export const ActivityEntity = {
   RESTOCK: "RESTOCK",
   ORDER: "ORDER",
   PRODUCT: "PRODUCT",
+  STAFF: "STAFF",
 } as const;
 
 type LogActivityInput = {

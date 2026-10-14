@@ -18,6 +18,7 @@ import { ProductRoutes } from "./modules/product/product.route";
 import { ProductTypeRoutes } from "./modules/product-type/product-type.route";
 import { RestockRoutes } from "./modules/restock/restock.route";
 import { ShopRoutes } from "./modules/shop/shop.route";
+import { StaffRoutes } from "./modules/staff/staff.route";
 import { UnitRoutes } from "./modules/unit/unit.route";
 import { UserRoutes } from "./modules/user/user.route";
 import { VendorRoutes } from "./modules/vendor/vendor.route";
@@ -58,6 +59,7 @@ app.use("/api/v1/inventory", InventoryRoutes);
 app.use("/api/v1/customers", CustomerRoutes);
 app.use("/api/v1/orders", OrderRoutes);
 app.use("/api/v1/notifications", NotificationRoutes);
+app.use("/api/v1/staff", StaffRoutes);
 app.use("/api/v1/activity-logs", ActivityLogRoutes);
 
 app.use(notFound);

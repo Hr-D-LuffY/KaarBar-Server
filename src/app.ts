@@ -6,6 +6,7 @@ import { config } from "./config";
 import { globalErrorHandler } from "./middleware/globalErrorHandler";
 import { notFound } from "./middleware/notFound";
 // import { generalRateLimiter } from "./middleware/rateLimiter";
+import { ActivityLogRoutes } from "./modules/activity-log/activity-log.route";
 import { AuthRoutes } from "./modules/auth/auth.route";
 import { CategoryRoutes } from "./modules/category/category.route";
 import { CompanyRoutes } from "./modules/company/company.route";
@@ -55,6 +56,7 @@ app.use("/api/v1/restocks", RestockRoutes);
 app.use("/api/v1/inventory", InventoryRoutes);
 app.use("/api/v1/customers", CustomerRoutes);
 app.use("/api/v1/orders", OrderRoutes);
+app.use("/api/v1/activity-logs", ActivityLogRoutes);
 
 app.use(notFound);
 app.use(globalErrorHandler);

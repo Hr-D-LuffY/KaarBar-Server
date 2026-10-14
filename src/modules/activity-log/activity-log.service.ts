@@ -5,7 +5,7 @@ import { buildPaginationMeta, getPagination } from "../../utils/pagination";
 import { buildOrderBy } from "../../utils/sort";
 import type { ListActivityLogsQuery } from "./activity-log.validation";
 
-const activityLogSelect = {
+export const activityLogSelect = {
   id: true,
   action: true,
   entityType: true,

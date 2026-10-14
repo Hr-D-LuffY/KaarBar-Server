@@ -7,6 +7,7 @@ import { globalErrorHandler } from "./middleware/globalErrorHandler";
 import { notFound } from "./middleware/notFound";
 // import { generalRateLimiter } from "./middleware/rateLimiter";
 import { ActivityLogRoutes } from "./modules/activity-log/activity-log.route";
+import { AdminRoutes } from "./modules/admin/admin.route";
 import { AuthRoutes } from "./modules/auth/auth.route";
 import { CategoryRoutes } from "./modules/category/category.route";
 import { CompanyRoutes } from "./modules/company/company.route";
@@ -63,6 +64,7 @@ app.use("/api/v1/notifications", NotificationRoutes);
 app.use("/api/v1/staff", StaffRoutes);
 app.use("/api/v1/reports", ReportRoutes);
 app.use("/api/v1/activity-logs", ActivityLogRoutes);
+app.use("/api/v1/admin", AdminRoutes);
 
 app.use(notFound);
 app.use(globalErrorHandler);

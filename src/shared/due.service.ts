@@ -1,6 +1,8 @@
 import httpStatus from "http-status";
 import type { Prisma } from "../generated/prisma/client";
 import { AppError } from "../utils/AppError";
+import { formatMoney } from "../utils/money";
+import { ActivityAction, ActivityEntity, logActivity } from "./activity-log.service";
 
 export type DueParty = "vendor" | "customer";
 
@@ -10,6 +12,11 @@ type PartyTarget = {
 };
 
 const PARTY_LABEL: Record<DueParty, string> = { vendor: "Vendor", customer: "Customer" };
+
+const PAYMENT_LOG = {
+  vendor: { action: ActivityAction.VENDOR_PAYMENT, entityType: ActivityEntity.VENDOR },
+  customer: { action: ActivityAction.CUSTOMER_PAYMENT, entityType: ActivityEntity.CUSTOMER },
+} as const;
 
 const partyWhere = ({ shopId, partyId }: PartyTarget) => ({
   id: partyId,
@@ -72,6 +79,31 @@ export const applyPayment = async (
 
   const due = await readDue(tx, party, target);
   if (due === null) throw new AppError(httpStatus.NOT_FOUND, `${label} not found`);
+  return due;
+};
+
+type PaymentInput = {
+  shopId: string;
+  userId: string;
+  partyId: string;
+  amount: Prisma.Decimal;
+  note?: string;
+};
+
+// A payment is the lowered due plus its activity-log row, which is the only record of the payment
+export const recordPayment = async (
+  tx: Prisma.TransactionClient,
+  party: DueParty,
+  { shopId, userId, partyId, amount, note }: PaymentInput,
+) => {
+  const due = await applyPayment(tx, party, { shopId, partyId }, amount);
+  await logActivity(tx, {
+    shopId,
+    userId,
+    ...PAYMENT_LOG[party],
+    entityId: partyId,
+    details: { amount: formatMoney(amount), note: note ?? null },
+  });
   return due;
 };
 

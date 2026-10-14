@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { moneySchema, positiveMoneySchema } from "../../utils/money";
+import { paymentBodySchema } from "../../shared/payment.validation";
+import { moneySchema } from "../../utils/money";
 import { paginationQuerySchema } from "../../utils/pagination";
 import { searchQuerySchema } from "../../utils/search";
 import { sortQuerySchema } from "../../utils/sort";
 
 const MAX_VENDOR_NAME_LENGTH = 100;
-const MAX_PAYMENT_NOTE_LENGTH = 200;
 const PHONE_PATTERN = /^\+?\d{7,15}$/;
 const VENDOR_SORT_FIELDS = ["name", "due", "createdAt"] as const;
 
@@ -53,14 +53,7 @@ export const updateVendorSchema = z.object({
 
 export const createVendorPaymentSchema = z.object({
   params: vendorIdParamsSchema,
-  body: z.object({
-    amount: positiveMoneySchema,
-    note: z
-      .string()
-      .trim()
-      .max(MAX_PAYMENT_NOTE_LENGTH, `Note must be at most ${MAX_PAYMENT_NOTE_LENGTH} characters`)
-      .optional(),
-  }),
+  body: paymentBodySchema,
 });
 
 export type ListVendorsQuery = z.infer<typeof listVendorsSchema>["query"];

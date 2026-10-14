@@ -5,6 +5,7 @@ import { sendSuccess } from "../../utils/sendResponse";
 import * as customerService from "./customer.service";
 import type {
   CreateCustomerInput,
+  CreateCustomerPaymentInput,
   ListCustomersQuery,
   UpdateCustomerInput,
 } from "./customer.validation";
@@ -48,4 +49,17 @@ export const deleteCustomer = catchAsync(async (req, res) => {
   const { shopId } = getShopContext(req);
   await customerService.deleteCustomer(shopId, String(req.params.id));
   sendSuccess(res, { message: "Customer deleted successfully" });
+});
+
+export const createCustomerPayment = catchAsync(async (req, res) => {
+  const payment = await customerService.createCustomerPayment(
+    getShopContext(req),
+    String(req.params.id),
+    req.body as CreateCustomerPaymentInput,
+  );
+  sendSuccess(res, {
+    statusCode: httpStatus.CREATED,
+    message: "Payment recorded successfully",
+    data: { payment },
+  });
 });

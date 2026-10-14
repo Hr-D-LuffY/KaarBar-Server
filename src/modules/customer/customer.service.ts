@@ -1,13 +1,16 @@
 import httpStatus from "http-status";
 import type { Prisma } from "../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
+import { recordPayment } from "../../shared/due.service";
 import { AppError } from "../../utils/AppError";
 import { formatMoney, ZERO } from "../../utils/money";
 import { buildPaginationMeta, getPagination } from "../../utils/pagination";
+import type { ShopContext } from "../../utils/request-context";
 import { containsSearch } from "../../utils/search";
 import { buildOrderBy } from "../../utils/sort";
 import type {
   CreateCustomerInput,
+  CreateCustomerPaymentInput,
   ListCustomersQuery,
   UpdateCustomerInput,
 } from "./customer.validation";
@@ -151,4 +154,21 @@ export const deleteCustomer = async (shopId: string, id: string) => {
   });
   if (!exists) throw customerNotFound();
   throw new AppError(httpStatus.CONFLICT, "Customer cannot be deleted while a due is outstanding");
+};
+
+export const createCustomerPayment = async (
+  { shopId, userId }: ShopContext,
+  id: string,
+  { amount, note }: CreateCustomerPaymentInput,
+) => {
+  const due = await prisma.$transaction((tx) =>
+    recordPayment(tx, "customer", { shopId, userId, partyId: id, amount, note }),
+  );
+
+  return {
+    customerId: id,
+    amount: formatMoney(amount),
+    note: note ?? null,
+    due: formatMoney(due),
+  };
 };

@@ -2,12 +2,14 @@ import type { Prisma } from "../generated/prisma/client";
 
 export const ActivityAction = {
   VENDOR_PAYMENT: "VENDOR_PAYMENT",
+  CUSTOMER_PAYMENT: "CUSTOMER_PAYMENT",
   RESTOCK_CREATE: "RESTOCK_CREATE",
   ORDER_CREATE: "ORDER_CREATE",
 } as const;
 
 export const ActivityEntity = {
   VENDOR: "VENDOR",
+  CUSTOMER: "CUSTOMER",
   RESTOCK: "RESTOCK",
   ORDER: "ORDER",
 } as const;

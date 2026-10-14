@@ -6,6 +6,7 @@ import { validate } from "../../middleware/validate";
 import { verifyToken } from "../../middleware/verifyToken";
 import * as customerController from "./customer.controller";
 import {
+  createCustomerPaymentSchema,
   createCustomerSchema,
   customerIdSchema,
   listCustomersSchema,
@@ -21,5 +22,11 @@ router.post("/", validate(createCustomerSchema), customerController.createCustom
 router.get("/:id", validate(customerIdSchema), customerController.getCustomer);
 router.patch("/:id", validate(updateCustomerSchema), customerController.updateCustomer);
 router.delete("/:id", validate(customerIdSchema), customerController.deleteCustomer);
+router.post(
+  "/:id/payments",
+  requireRole(Role.OWNER),
+  validate(createCustomerPaymentSchema),
+  customerController.createCustomerPayment,
+);
 
 export const CustomerRoutes = router;

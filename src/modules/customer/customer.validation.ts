@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { paymentBodySchema } from "../../shared/payment.validation";
 import { moneySchema } from "../../utils/money";
 import { paginationQuerySchema } from "../../utils/pagination";
 import { searchQuerySchema } from "../../utils/search";
@@ -70,6 +71,12 @@ export const updateCustomerSchema = z.object({
     ),
 });
 
+export const createCustomerPaymentSchema = z.object({
+  params: customerIdParamsSchema,
+  body: paymentBodySchema,
+});
+
 export type ListCustomersQuery = z.infer<typeof listCustomersSchema>["query"];
 export type CreateCustomerInput = z.infer<typeof createCustomerSchema>["body"];
 export type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>["body"];
+export type CreateCustomerPaymentInput = z.infer<typeof createCustomerPaymentSchema>["body"];

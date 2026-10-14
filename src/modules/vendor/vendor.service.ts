@@ -2,8 +2,8 @@ import httpStatus from "http-status";
 import { z } from "zod";
 import { Prisma } from "../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
-import { ActivityAction, ActivityEntity, logActivity } from "../../shared/activity-log.service";
-import { applyPayment } from "../../shared/due.service";
+import { ActivityAction, ActivityEntity } from "../../shared/activity-log.service";
+import { recordPayment } from "../../shared/due.service";
 import { AppError } from "../../utils/AppError";
 import { formatMoney, ZERO } from "../../utils/money";
 import { buildPaginationMeta, getPagination } from "../../utils/pagination";
@@ -151,18 +151,9 @@ export const createVendorPayment = async (
   id: string,
   { amount, note }: CreateVendorPaymentInput,
 ) => {
-  const due = await prisma.$transaction(async (tx) => {
-    const remainingDue = await applyPayment(tx, "vendor", { shopId, partyId: id }, amount);
-    await logActivity(tx, {
-      shopId,
-      userId,
-      action: ActivityAction.VENDOR_PAYMENT,
-      entityType: ActivityEntity.VENDOR,
-      entityId: id,
-      details: { amount: formatMoney(amount), note: note ?? null },
-    });
-    return remainingDue;
-  });
+  const due = await prisma.$transaction((tx) =>
+    recordPayment(tx, "vendor", { shopId, userId, partyId: id, amount, note }),
+  );
 
   return { vendorId: id, amount: formatMoney(amount), note: note ?? null, due: formatMoney(due) };
 };

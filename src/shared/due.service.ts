@@ -17,21 +17,32 @@ const partyWhere = ({ shopId, partyId }: PartyTarget) => ({
   deletedAt: null,
 });
 
-// One conditional UPDATE (due >= amount), so a payment can't overpay even when sent twice
-const decrementDue = async (
+const updateDue = async (
   tx: Prisma.TransactionClient,
   party: DueParty,
-  target: PartyTarget,
-  amount: Prisma.Decimal,
+  where: Prisma.CustomerWhereInput & Prisma.VendorWhereInput,
+  data: { due: { increment: Prisma.Decimal } | { decrement: Prisma.Decimal } },
 ) => {
-  const where = { ...partyWhere(target), due: { gte: amount } };
-  const data = { due: { decrement: amount } };
   const { count } =
     party === "vendor"
       ? await tx.vendor.updateMany({ where, data })
       : await tx.customer.updateMany({ where, data });
   return count;
 };
+
+// One conditional UPDATE (due >= amount), so a payment can't overpay even when sent twice
+const decrementDue = (
+  tx: Prisma.TransactionClient,
+  party: DueParty,
+  target: PartyTarget,
+  amount: Prisma.Decimal,
+) =>
+  updateDue(
+    tx,
+    party,
+    { ...partyWhere(target), due: { gte: amount } },
+    { due: { decrement: amount } },
+  );
 
 const readDue = async (tx: Prisma.TransactionClient, party: DueParty, target: PartyTarget) => {
   const where = partyWhere(target);
@@ -71,11 +82,18 @@ export const addDue = async (
   target: PartyTarget,
   amount: Prisma.Decimal,
 ) => {
-  const where = partyWhere(target);
-  const data = { due: { increment: amount } };
-  const { count } =
-    party === "vendor"
-      ? await tx.vendor.updateMany({ where, data })
-      : await tx.customer.updateMany({ where, data });
+  const count = await updateDue(tx, party, partyWhere(target), { due: { increment: amount } });
+  if (count === 0) throw new AppError(httpStatus.NOT_FOUND, `${PARTY_LABEL[party]} not found`);
+};
+
+// Takes back the unpaid part of a cancelled sale. It may go below zero (credit) and still works
+// on a removed party, so an old order can always be cancelled
+export const cancelDue = async (
+  tx: Prisma.TransactionClient,
+  party: DueParty,
+  { shopId, partyId }: PartyTarget,
+  amount: Prisma.Decimal,
+) => {
+  const count = await updateDue(tx, party, { id: partyId, shopId }, { due: { decrement: amount } });
   if (count === 0) throw new AppError(httpStatus.NOT_FOUND, `${PARTY_LABEL[party]} not found`);
 };

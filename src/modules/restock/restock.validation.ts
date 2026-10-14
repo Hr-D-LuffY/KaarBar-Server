@@ -2,21 +2,16 @@ import { z } from "zod";
 import { dateRangeQuerySchema } from "../../utils/date-range";
 import { moneySchema, unitCostSchema, ZERO } from "../../utils/money";
 import { paginationQuerySchema } from "../../utils/pagination";
+import { itemQuantitySchema } from "../../utils/quantity";
 import { sortQuerySchema } from "../../utils/sort";
 
 const MAX_ITEMS_PER_RESTOCK = 100;
-// Stock is stored in an Int column, so one line stays well below its limit
-const MAX_ITEM_QUANTITY = 1_000_000_000;
 const MAX_NOTE_LENGTH = 200;
 const RESTOCK_SORT_FIELDS = ["createdAt", "total"] as const;
 
 const restockItemSchema = z.object({
   productId: z.uuid("Invalid product id"),
-  quantity: z
-    .number()
-    .int("Quantity must be a whole number")
-    .min(1, "Quantity must be at least 1")
-    .max(MAX_ITEM_QUANTITY, "Quantity is too large"),
+  quantity: itemQuantitySchema,
   buyPrice: unitCostSchema,
 });
 

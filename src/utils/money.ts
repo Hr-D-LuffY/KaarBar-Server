@@ -4,7 +4,7 @@ import { Prisma } from "../generated/prisma/client";
 export const MONEY_DECIMAL_PLACES = 2;
 export const UNIT_COST_DECIMAL_PLACES = 4;
 // Money columns are Decimal(12,2), per-unit costs Decimal(12,4)
-const MAX_MONEY = new Prisma.Decimal("9999999999.99");
+export const MAX_MONEY = new Prisma.Decimal("9999999999.99");
 const MAX_UNIT_COST = new Prisma.Decimal("99999999.9999");
 
 export const ZERO = new Prisma.Decimal(0);

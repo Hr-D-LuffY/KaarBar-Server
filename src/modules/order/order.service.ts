@@ -1,0 +1,186 @@
+import httpStatus from "http-status";
+import type { Prisma } from "../../generated/prisma/client";
+import { prisma } from "../../lib/prisma";
+import { ActivityAction, ActivityEntity, logActivity } from "../../shared/activity-log.service";
+import { addDue } from "../../shared/due.service";
+import { deductStock } from "../../shared/stock.service";
+import { AppError } from "../../utils/AppError";
+import {
+  formatMoney,
+  formatUnitCost,
+  MAX_MONEY,
+  MONEY_DECIMAL_PLACES,
+  splitProportionally,
+  sumMoney,
+  ZERO,
+} from "../../utils/money";
+import type { ShopContext } from "../../utils/request-context";
+import type { CreateOrderInput } from "./order.validation";
+
+const INVOICE_NO_DIGITS = 6;
+
+const orderSelect = {
+  id: true,
+  invoiceNo: true,
+  customerId: true,
+  customer: { select: { id: true, name: true, phone: true } },
+  discount: true,
+  total: true,
+  paid: true,
+  status: true,
+  cancelReason: true,
+  createdAt: true,
+  items: {
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      productId: true,
+      product: {
+        select: {
+          name: true,
+          packName: true,
+          packSize: true,
+          unit: { select: { name: true, symbol: true, decimalPlaces: true } },
+        },
+      },
+      quantity: true,
+      unitPrice: true,
+      unitCost: true,
+      lineTotal: true,
+    },
+  },
+} satisfies Prisma.OrderSelect;
+
+type OrderRow = Prisma.OrderGetPayload<{ select: typeof orderSelect }>;
+
+const orderNotFound = () => new AppError(httpStatus.NOT_FOUND, "Order not found");
+
+const validationError = (field: string, message: string) =>
+  new AppError(httpStatus.BAD_REQUEST, "Validation failed", [{ field, message }]);
+
+export const formatInvoiceNo = (invoiceNo: number) =>
+  `INV-${String(invoiceNo).padStart(INVOICE_NO_DIGITS, "0")}`;
+
+const toOrderView = ({ invoiceNo, discount, total, paid, items, ...order }: OrderRow) => ({
+  ...order,
+  invoiceNo,
+  invoiceNumber: formatInvoiceNo(invoiceNo),
+  subtotal: formatMoney(total.plus(discount)),
+  discount: formatMoney(discount),
+  total: formatMoney(total),
+  paid: formatMoney(paid),
+  remaining: formatMoney(total.minus(paid)),
+  items: items.map(({ unitPrice, unitCost, lineTotal, ...item }) => ({
+    ...item,
+    unitPrice: formatUnitCost(unitPrice),
+    unitCost: formatUnitCost(unitCost),
+    lineTotal: formatMoney(lineTotal),
+  })),
+});
+
+const findBelowCostWarnings = ({ items }: OrderRow) =>
+  items
+    .filter((item) => item.unitPrice.lt(item.unitCost))
+    .map((item) => ({
+      productId: item.productId,
+      productName: item.product.name,
+      unitPrice: formatUnitCost(item.unitPrice),
+      unitCost: formatUnitCost(item.unitCost),
+      message: `${item.product.name} is priced below its cost`,
+    }));
+
+// Line totals are rounded to money precision; the rounding remainder goes to the last line
+const computeOrderTotals = (items: CreateOrderInput["items"], discount: Prisma.Decimal) => {
+  const exactLines = items.map(({ quantity, unitPrice }) => unitPrice.mul(quantity));
+  const subtotal = sumMoney(exactLines).toDecimalPlaces(MONEY_DECIMAL_PLACES);
+  return {
+    lineTotals: splitProportionally(subtotal, exactLines),
+    subtotal,
+    total: subtotal.minus(discount),
+  };
+};
+
+const assertCustomerInShop = async (tx: Prisma.TransactionClient, shopId: string, id: string) => {
+  const customer = await tx.customer.findFirst({
+    where: { id, shopId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!customer) throw new AppError(httpStatus.NOT_FOUND, "Customer not found");
+};
+
+const findOrder = async (shopId: string, id: string) => {
+  const order = await prisma.order.findFirst({ where: { id, shopId }, select: orderSelect });
+  if (!order) throw orderNotFound();
+  return order;
+};
+
+export const createOrder = async (
+  { shopId, userId }: ShopContext,
+  { customerId, discount, paid, items }: CreateOrderInput,
+) => {
+  const { lineTotals, subtotal, total } = computeOrderTotals(items, discount);
+  if (subtotal.gt(MAX_MONEY)) throw validationError("items", "Order total is too large");
+  if (discount.gt(subtotal)) {
+    throw validationError("discount", "Discount cannot be more than the items total");
+  }
+  if (paid.gt(total)) throw validationError("paid", "Paid cannot be more than the order total");
+  if (!customerId && !paid.eq(total)) {
+    throw validationError("paid", "A walk-in order must be paid in full");
+  }
+  const unpaid = total.minus(paid);
+
+  const orderId = await prisma.$transaction(async (tx) => {
+    if (customerId) {
+      await assertCustomerInShop(tx, shopId, customerId);
+      if (unpaid.gt(ZERO)) await addDue(tx, "customer", { shopId, partyId: customerId }, unpaid);
+    }
+
+    // Rows are locked in a fixed order so two overlapping orders can't wait on each other
+    const unitCosts = new Map<string, Prisma.Decimal>();
+    const lockOrder = [...items].sort((a, b) => a.productId.localeCompare(b.productId));
+    for (const { productId, quantity } of lockOrder) {
+      const { avgCost } = await deductStock(tx, { shopId, productId }, quantity);
+      unitCosts.set(productId, avgCost);
+    }
+
+    const order = await tx.order.create({
+      data: {
+        shopId,
+        customerId,
+        discount,
+        total,
+        paid,
+        items: {
+          create: items.map(({ productId, quantity, unitPrice }, index) => ({
+            productId,
+            quantity,
+            unitPrice,
+            unitCost: unitCosts.get(productId) ?? ZERO,
+            lineTotal: lineTotals[index] ?? ZERO,
+          })),
+        },
+      },
+      select: { id: true },
+    });
+
+    await logActivity(tx, {
+      shopId,
+      userId,
+      action: ActivityAction.ORDER_CREATE,
+      entityType: ActivityEntity.ORDER,
+      entityId: order.id,
+      details: {
+        customerId: customerId ?? null,
+        discount: formatMoney(discount),
+        total: formatMoney(total),
+        paid: formatMoney(paid),
+        itemCount: items.length,
+      },
+    });
+
+    return order.id;
+  });
+
+  const order = await findOrder(shopId, orderId);
+  return { order: toOrderView(order), warnings: findBelowCostWarnings(order) };
+};

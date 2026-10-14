@@ -13,6 +13,7 @@ type StockTarget = {
 type DeductedRow = {
   stock: number;
   lowStockLevel: number;
+  avgCost: Prisma.Decimal | string | number;
 };
 
 type LockedRow = {
@@ -52,12 +53,13 @@ const createStockNotification = async (
   return tx.notification.create({ data: { shopId, productId, type, title } });
 };
 
-// Single conditional UPDATE: the stock check and the decrement can't be split by a concurrent request
+// Single conditional UPDATE: the stock check and the decrement can't be split by a concurrent request.
+// The row stays locked until commit, so the returned avgCost is the cost this sale is booked at.
 export const deductStock = async (
   tx: Tx,
   target: StockTarget,
   quantity: number,
-): Promise<{ stock: number; notification: Notification | null }> => {
+): Promise<{ stock: number; avgCost: Prisma.Decimal; notification: Notification | null }> => {
   const { shopId, productId } = target;
   const [row] = await tx.$queryRaw<DeductedRow[]>(Prisma.sql`
     UPDATE "shop_products"
@@ -66,7 +68,7 @@ export const deductStock = async (
       AND "productId" = ${productId}
       AND "deletedAt" IS NULL
       AND "stock" >= ${quantity}
-    RETURNING "stock", "lowStockLevel"
+    RETURNING "stock", "lowStockLevel", "avgCost"
   `);
 
   if (!row) {
@@ -80,7 +82,7 @@ export const deductStock = async (
 
   const crossing = detectStockCrossing(row.stock + quantity, row.stock, row.lowStockLevel);
   const notification = crossing ? await createStockNotification(tx, target, crossing) : null;
-  return { stock: row.stock, notification };
+  return { stock: row.stock, avgCost: new Prisma.Decimal(row.avgCost), notification };
 };
 
 // Works on removed shop products too, so a cancelled old order can always put its stock back

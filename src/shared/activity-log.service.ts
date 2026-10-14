@@ -5,6 +5,7 @@ export const ActivityAction = {
   CUSTOMER_PAYMENT: "CUSTOMER_PAYMENT",
   RESTOCK_CREATE: "RESTOCK_CREATE",
   ORDER_CREATE: "ORDER_CREATE",
+  ORDER_CANCEL: "ORDER_CANCEL",
 } as const;
 
 export const ActivityEntity = {

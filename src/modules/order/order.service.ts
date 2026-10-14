@@ -1,9 +1,9 @@
 import httpStatus from "http-status";
-import type { Prisma } from "../../generated/prisma/client";
+import { OrderStatus, type Prisma } from "../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { ActivityAction, ActivityEntity, logActivity } from "../../shared/activity-log.service";
-import { addDue } from "../../shared/due.service";
-import { deductStock } from "../../shared/stock.service";
+import { addDue, cancelDue } from "../../shared/due.service";
+import { deductStock, restoreStock } from "../../shared/stock.service";
 import { AppError } from "../../utils/AppError";
 import {
   formatMoney,
@@ -15,7 +15,7 @@ import {
   ZERO,
 } from "../../utils/money";
 import type { ShopContext } from "../../utils/request-context";
-import type { CreateOrderInput } from "./order.validation";
+import type { CancelOrderInput, CreateOrderInput } from "./order.validation";
 
 const INVOICE_NO_DIGITS = 6;
 
@@ -183,4 +183,61 @@ export const createOrder = async (
 
   const order = await findOrder(shopId, orderId);
   return { order: toOrderView(order), warnings: findBelowCostWarnings(order) };
+};
+
+export const cancelOrder = async (
+  { shopId, userId }: ShopContext,
+  id: string,
+  { reason }: CancelOrderInput,
+) => {
+  await prisma.$transaction(async (tx) => {
+    // The status flip is the guard: of two simultaneous cancels only one can match COMPLETED
+    const { count } = await tx.order.updateMany({
+      where: { id, shopId, status: OrderStatus.COMPLETED },
+      data: { status: OrderStatus.CANCELLED, cancelReason: reason },
+    });
+    if (count === 0) {
+      const exists = await tx.order.findFirst({ where: { id, shopId }, select: { id: true } });
+      if (!exists) throw orderNotFound();
+      throw new AppError(httpStatus.CONFLICT, "Order is already cancelled");
+    }
+
+    const order = await tx.order.findUniqueOrThrow({
+      where: { id },
+      select: {
+        customerId: true,
+        total: true,
+        paid: true,
+        items: { select: { productId: true, quantity: true } },
+      },
+    });
+
+    // Same fixed lock order as order creation
+    const lockOrder = [...order.items].sort((a, b) => a.productId.localeCompare(b.productId));
+    for (const { productId, quantity } of lockOrder) {
+      await restoreStock(tx, { shopId, productId }, quantity);
+    }
+
+    const unpaid = order.total.minus(order.paid);
+    if (order.customerId && unpaid.gt(ZERO)) {
+      await cancelDue(tx, "customer", { shopId, partyId: order.customerId }, unpaid);
+    }
+
+    await logActivity(tx, {
+      shopId,
+      userId,
+      action: ActivityAction.ORDER_CANCEL,
+      entityType: ActivityEntity.ORDER,
+      entityId: id,
+      details: {
+        customerId: order.customerId,
+        reason,
+        total: formatMoney(order.total),
+        paid: formatMoney(order.paid),
+        dueReduced: formatMoney(order.customerId ? unpaid : ZERO),
+      },
+    });
+  });
+
+  return toOrderView(await findOrder(shopId, id));
 };

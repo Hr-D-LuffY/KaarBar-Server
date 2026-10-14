@@ -3,6 +3,7 @@ import { moneySchema, unitCostSchema, ZERO } from "../../utils/money";
 import { itemQuantitySchema } from "../../utils/quantity";
 
 const MAX_ITEMS_PER_ORDER = 100;
+const MAX_CANCEL_REASON_LENGTH = 200;
 
 const orderItemSchema = z.object({
   productId: z.uuid("Invalid product id"),
@@ -33,4 +34,19 @@ export const createOrderSchema = z.object({
     }),
 });
 
+export const cancelOrderSchema = z.object({
+  params: z.object({ id: z.uuid("Invalid order id") }),
+  body: z.object({
+    reason: z
+      .string()
+      .trim()
+      .min(1, "Reason cannot be empty")
+      .max(
+        MAX_CANCEL_REASON_LENGTH,
+        `Reason must be at most ${MAX_CANCEL_REASON_LENGTH} characters`,
+      ),
+  }),
+});
+
 export type CreateOrderInput = z.infer<typeof createOrderSchema>["body"];
+export type CancelOrderInput = z.infer<typeof cancelOrderSchema>["body"];

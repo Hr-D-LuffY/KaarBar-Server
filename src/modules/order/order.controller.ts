@@ -3,7 +3,7 @@ import { catchAsync } from "../../utils/catchAsync";
 import { getShopContext } from "../../utils/request-context";
 import { sendSuccess } from "../../utils/sendResponse";
 import * as orderService from "./order.service";
-import type { CreateOrderInput } from "./order.validation";
+import type { CancelOrderInput, CreateOrderInput } from "./order.validation";
 
 export const createOrder = catchAsync(async (req, res) => {
   const { order, warnings } = await orderService.createOrder(
@@ -15,4 +15,13 @@ export const createOrder = catchAsync(async (req, res) => {
     message: "Order created successfully",
     data: { order, warnings },
   });
+});
+
+export const cancelOrder = catchAsync(async (req, res) => {
+  const order = await orderService.cancelOrder(
+    getShopContext(req),
+    String(req.params.id),
+    req.body as CancelOrderInput,
+  );
+  sendSuccess(res, { message: "Order cancelled successfully", data: { order } });
 });

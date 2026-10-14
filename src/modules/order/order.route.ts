@@ -5,7 +5,7 @@ import { shopContext } from "../../middleware/shopContext";
 import { validate } from "../../middleware/validate";
 import { verifyToken } from "../../middleware/verifyToken";
 import * as orderController from "./order.controller";
-import { createOrderSchema } from "./order.validation";
+import { cancelOrderSchema, createOrderSchema } from "./order.validation";
 
 const router = Router();
 
@@ -17,6 +17,14 @@ router.post(
   shopContext,
   validate(createOrderSchema),
   orderController.createOrder,
+);
+
+router.post(
+  "/:id/cancel",
+  requireRole(Role.OWNER),
+  shopContext,
+  validate(cancelOrderSchema),
+  orderController.cancelOrder,
 );
 
 export const OrderRoutes = router;

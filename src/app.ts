@@ -12,6 +12,7 @@ import { CategoryRoutes } from "./modules/category/category.route";
 import { CompanyRoutes } from "./modules/company/company.route";
 import { CustomerRoutes } from "./modules/customer/customer.route";
 import { InventoryRoutes } from "./modules/inventory/inventory.route";
+import { NotificationRoutes } from "./modules/notification/notification.route";
 import { OrderRoutes } from "./modules/order/order.route";
 import { ProductRoutes } from "./modules/product/product.route";
 import { ProductTypeRoutes } from "./modules/product-type/product-type.route";
@@ -56,6 +57,7 @@ app.use("/api/v1/restocks", RestockRoutes);
 app.use("/api/v1/inventory", InventoryRoutes);
 app.use("/api/v1/customers", CustomerRoutes);
 app.use("/api/v1/orders", OrderRoutes);
+app.use("/api/v1/notifications", NotificationRoutes);
 app.use("/api/v1/activity-logs", ActivityLogRoutes);
 
 app.use(notFound);
